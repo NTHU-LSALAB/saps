@@ -1,7 +1,6 @@
 # SAPS: Semantics-Aware Path Steering for Multi-Tenant NVMe-over-Fabrics
 
-This repository contains the prototype and experiment drivers used by the SAPS
-paper. SAPS treats path repair and tenant scheduling as one allocation problem.
+This repository contains the SAPS prototype. SAPS treats path repair and tenant scheduling as one allocation problem.
 It derives a graded path-health signal from NVMe completion behavior, converts
 that signal into effective path capacity, and allocates the feasible service
 budget with weighted max-min fairness.
@@ -29,17 +28,10 @@ bounded probe traffic needed to test recovery.
 ## Repository layout
 
 - `src/` contains the DPA program, the host library, and shared data structures.
-- `integration/spdk/` contains the SPDK patch used by the prototype; see
+- `integration/spdk/` contains the SPDK patches used by the prototype; see
   `integration/spdk/README.md`.
-- `scripts/` contains the campaign drivers used by the current paper results.
-- `experiments/3path_targets/` contains the target setup scripts required by
-  those campaigns.
-- `experiments/supplementary/` contains the detector-baseline, delay-sweep,
-  placement, sampling, and RocksDB experiments; see
-  `experiments/supplementary/README.md`.
-- `evaluation/` contains the reference allocator used by the local checks.
-- `docs/` describes the control loop, implementation boundary, runtime
-  configuration, and testbed procedure.
+- `docs/` describes the control loop, implementation boundary, and runtime
+  configuration.
 
 The `sapsq` prefix remains in internal symbols and filenames for compatibility
 with recorded experiment manifests. It refers to the SAPS controller described
@@ -56,65 +48,12 @@ meson setup build
 ninja -C build
 ```
 
-Build the shared-memory inspection tool separately:
-
-```bash
-cc -O2 -std=gnu11 -Isrc -o scripts/sapsq_dump scripts/sapsq_dump.c
-```
-
 `integration/spdk/0001-saps-spdk-integration.patch` contains the submit,
 completion, path-selection, initialization, and target-side fault-injection
 changes used in the evaluation. It applies to SPDK commit
 `a83e52f1da18807e21b552a0fe35057f8e9ea586`; `integration/spdk/README.md` gives
-the build steps.
-
-## Paper campaigns
-
-The paper is backed by these campaign drivers:
-
-- `scripts/run_signal_isolation_campaign.py` compares completion semantics,
-  reachability, queue depth, and request completion time under matched faults.
-- `scripts/run_hcaa_scale_campaign.py` compares continuous health-coupled
-  allocation with nominal weighted max-min allocation as path and tenant counts
-  increase.
-- `scripts/run_summit_v2_campaign.py` runs the path-delay and coupling
-  comparison.
-- `scripts/run_generality_campaign.py` repeats one controller configuration
-  across I/O sizes and read-write mixes.
-- `scripts/run_overhead_qd_campaign.py` measures healthy-path throughput cost
-  across queue depths.
-- `experiments/supplementary/detector_baselines/` runs the detector-baseline
-  comparison, the binary health mode sweep, the placement comparison, and the
-  sampling sensitivity test.
-- `experiments/supplementary/rocksdb/` runs the RocksDB application test.
-
-These drivers retain the testbed's absolute paths, interface names, RPC
-sockets, and SSH host aliases. Edit those settings for another deployment.
-Raw measurements are intentionally not stored in this repository.
-
-## Local checks
-
-The reference allocator exercises the capacity boundary and weighted
-progressive fill without hardware:
-
-```bash
-python3 evaluation/sapsq_allocator_ref.py
-```
-
-The campaign logic has hardware-independent tests:
-
-```bash
-python3 -m unittest \
-  scripts/test_run_signal_isolation_campaign.py \
-  scripts/test_run_summit_v2_campaign.py \
-  scripts/test_run_overhead_qd_campaign.py
-```
-
-Syntax-check all published Python sources with:
-
-```bash
-python3 -m compileall -q evaluation scripts
-```
+the build steps. `integration/spdk/0002-saps-least-loaded-selection.patch`
+applies on top of it and adds the least-loaded multipath selection.
 
 ## Requirements
 
@@ -122,10 +61,6 @@ python3 -m compileall -q evaluation scripts
 - NVIDIA DOCA SDK 2025.10 or newer
 - SPDK built with the SAPS integration
 - An NVMe-oF RDMA initiator and target with multiple paths
-- Python 3.10 or newer
-- NumPy for the severity campaign
-
-See `docs/TESTBED_RUNBOOK.md` for the order of operations.
 
 ## License
 
