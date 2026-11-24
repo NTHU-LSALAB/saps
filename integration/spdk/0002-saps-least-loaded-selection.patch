@@ -1,0 +1,54 @@
+--- a/module/bdev/nvme/bdev_nvme.c
++++ b/module/bdev/nvme/bdev_nvme.c
+@@ -1820,6 +1820,21 @@
+ }
+ 
+ static inline bool
++sapsq_select_least_loaded(void)
++{
++	static int initialized;
++	static bool enabled;
++
++	if (!initialized) {
++		const char *env = getenv("SAPSQ_SELECT_LEAST_LOADED");
++
++		enabled = env != NULL && env[0] == '1';
++		initialized = 1;
++	}
++	return enabled;
++}
++
++static inline bool
+ sapsq_bypass_budget_selection(void)
+ {
+ 	static int initialized;
+@@ -2291,6 +2306,29 @@
+ 			}
+ 		}
+ 
++		if (selectable_budget_sum != 0 && sapsq_select_least_loaded()) {
++			unsigned start = saps_xorshift32(&nbdev_ch->rr_counter) % n_slots;
++			int best = -1;
++
++			for (unsigned k = 0; k < n_slots; k++) {
++				unsigned i = (start + k) % n_slots;
++
++				if (!budget_selectable[i]) {
++					continue;
++				}
++				if (best < 0 ||
++				    (uint64_t)(slots[i].inflight + 1u) *
++				    sapsq_budget_q32[slots[best].path_id] <
++				    (uint64_t)(slots[best].inflight + 1u) *
++				    sapsq_budget_q32[slots[i].path_id]) {
++					best = (int)i;
++				}
++			}
++			if (best >= 0) {
++				SAPS_RETURN_SLOT((unsigned)best);
++			}
++		}
++
+ 		if (selectable_budget_sum != 0) {
+ 			uint64_t r =
+ 				saps_xorshift32(&nbdev_ch->rr_counter) %

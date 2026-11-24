@@ -19,6 +19,13 @@ The patch covers:
 - `app/*`, `examples/bdev/bdevperf`, `mk/*`: build integration for the DPA
   plugin, gated by `DPA_PLUGIN=1`.
 
+`0002-saps-least-loaded-selection.patch` applies on top of `0001` and changes
+only `module/bdev/nvme/bdev_nvme.c`. With `SAPSQ_SELECT_LEAST_LOADED=1`, the
+multipath selector sends each I/O to the path with the fewest I/Os in flight
+relative to the tenant's committed budget on that path, instead of choosing in
+proportion to the budget row. Without the variable, the selector behaves as in
+`0001`.
+
 ## Apply and build
 
 ```bash
@@ -26,6 +33,7 @@ git clone https://github.com/spdk/spdk.git && cd spdk
 git checkout a83e52f1da18807e21b552a0fe35057f8e9ea586
 git submodule update --init
 git apply /path/to/saps-nvmeof/integration/spdk/0001-saps-spdk-integration.patch
+git apply /path/to/saps-nvmeof/integration/spdk/0002-saps-least-loaded-selection.patch
 ./configure --with-rdma
 make -j"$(nproc)" DPA_PLUGIN=1 \
      SAPS_FLEXIO_SAMPLES=/path/to/doca/flexio_build/samples
